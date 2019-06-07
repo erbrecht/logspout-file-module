@@ -46,10 +46,10 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 
 	structuredData := route.Options["structured_data"]
 
-	tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"message\": {{.Data}}\n"
-	if structuredData != "true" {
-		tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"message\": {{ toJSON .Data }} }"
-	}
+	//tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{.Data}}\n"
+	//if structuredData != "true" {
+	tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
+	//}
 	tmpl, err := template.New("file").Funcs(funcs).Parse(tmplStr)
 	if err != nil {
 		return nil, err
@@ -93,6 +93,19 @@ type Adapter struct {
 	tmpl        *template.Template
 }
 
+// CheckFile makes sure file exists for writing
+func (a *Adapter) CheckFile() {
+	if _, err := os.Stat(a.logdir + a.filename); os.IsNotExist(err) {
+		// file doesn't exist. create it
+		a.fp, err = os.Create(a.logdir + a.filename)
+		// set size to 0
+		if err != nil {
+			return err
+		}
+		a.filesize = 0
+	}
+}
+
 // Stream sends log data to a connection
 func (a *Adapter) Stream(logstream chan *router.Message) {
 	for message := range logstream {
@@ -102,6 +115,9 @@ func (a *Adapter) Stream(logstream chan *router.Message) {
 			log.Println("err:", err)
 			return
 		}
+
+		a.CheckFile()
+
 		//log.Println("debug:", buf.String())
 		_, err = a.fp.Write(buf.Bytes())
 		if err != nil {
