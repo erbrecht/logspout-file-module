@@ -44,8 +44,6 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 	}
 	//log.Println("filename [",filename,"]")
 
-	structuredData := route.Options["structured_data"]
-
 	//tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{.Data}}\n"
 	//if structuredData != "true" {
 	tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
