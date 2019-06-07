@@ -46,7 +46,7 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 
 	tmplStr := "{{.Data}}\n"
 	if os.Getenv("FILE_FORMAT") != "" {
-		tmplStr = os.Getenv("FILE_FORMAT")
+		tmplStr = os.Getenv("FILE_FORMAT") + "\n"
 	}
 	tmpl, err := template.New("file").Parse(tmplStr)
 	if err != nil {
