@@ -48,7 +48,7 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 
 	//tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{.Data}}\n"
 	//if structuredData != "true" {
-	tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
+	tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
 	//}
 	tmpl, err := template.New("file").Funcs(funcs).Parse(tmplStr)
 	if err != nil {
@@ -104,6 +104,7 @@ func (a *Adapter) CheckFile() (err error) {
 		}
 		a.filesize = 0
 	}
+	return nil
 }
 
 // Stream sends log data to a connection
