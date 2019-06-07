@@ -94,7 +94,7 @@ type Adapter struct {
 }
 
 // CheckFile makes sure file exists for writing
-func (a *Adapter) CheckFile() {
+func (a *Adapter) CheckFile() (err error) {
 	if _, err := os.Stat(a.logdir + a.filename); os.IsNotExist(err) {
 		// file doesn't exist. create it
 		a.fp, err = os.Create(a.logdir + a.filename)
