@@ -50,7 +50,7 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 	if structuredData != "true" {
 		tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"message\": {{ toJSON .Data }} }"
 	}
-	tmpl, err := template.New("file").Parse(tmplStr)
+	tmpl, err := template.New("file").Funcs(funcs).Parse(tmplStr)
 	if err != nil {
 		return nil, err
 	}
