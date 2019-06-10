@@ -34,6 +34,20 @@ var funcs = template.FuncMap{
 
 // NewFileAdapter returns a configured raw.Adapter
 func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
+	// default action is to NOT check that log file exists before writing log entry
+	// if the file is removed while logspout is running, entries will be lost since
+	// logspout will have a file pointer to a non-existent file
+
+	// setting CHECK_LOG_FILE environment variable to any value will force check that
+	// the log file exists before writing a log entry. this could induce a large
+	// performance penalty since the file is checked (stat'ed) before every write
+
+	checkLogFileExists := false
+	os.Environ()
+	if os.Getenv("CHECK_LOG_FILE") != "" {
+		checkLogFileExists = true
+	}
+
 	// default log dir
 	logdir := "/var/log/"
 
@@ -46,9 +60,9 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 
 	structuredData := route.Options["structured_data"]
 
-	tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z07:00\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{.Data}}\n"
+	tmplStr := "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{.Data}}\n"
 	if structuredData != "true" {
-		tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z07:00\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
+		tmplStr = "{ \"container\" : \"{{ .Container.Name }}\", \"labels\": {{ toJSON .Container.Config.Labels }}, \"timestamp\": \"{{ .Time.Format \"2006-01-02T15:04:05Z0700\" }}\", \"source\" : \"{{ .Source }}\", \"line\": {{ toJSON .Data }} }\n"
 	}
 	tmpl, err := template.New("file").Funcs(funcs).Parse(tmplStr)
 	if err != nil {
@@ -67,11 +81,12 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 	//log.Println("maxfilesize [",maxfilesize,"]")
 
 	a := Adapter{
-		route:       route,
-		filename:    filename,
-		logdir:      logdir,
-		maxfilesize: maxfilesize,
-		tmpl:        tmpl,
+		route:        route,
+		filename:     filename,
+		logdir:       logdir,
+		maxfilesize:  maxfilesize,
+		tmpl:         tmpl,
+		checklogfile: checkLogFileExists,
 	}
 
 	// rename if exists, otherwise create it
@@ -91,6 +106,7 @@ type Adapter struct {
 	fp          *os.File
 	route       *router.Route
 	tmpl        *template.Template
+	checklogfile bool
 }
 
 // CheckFile makes sure file exists for writing
@@ -117,7 +133,9 @@ func (a *Adapter) Stream(logstream chan *router.Message) {
 			return
 		}
 
-		a.CheckFile()
+		if a.checklogfile {
+			a.CheckFile()
+		}
 
 		//log.Println("debug:", buf.String())
 		_, err = a.fp.Write(buf.Bytes())
