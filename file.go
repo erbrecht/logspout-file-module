@@ -190,12 +190,15 @@ func (a *Adapter) PruneLogs() (err error) {
 	// sort files by modified date
 	sort.Slice(files, func(i, j int) bool { return files[i].ModTime().Before(files[j].ModTime()) })
 
-	// grab all but last <maxfilecount> files
-	toPrune := files[0 : len(files)-a.maxfilecount]
+	// if there are more files than maxfilecount, attempt a prune
+	if len(files) > a.maxfilecount {
+		// grab all but last <maxfilecount> files
+		toPrune := files[0 : len(files)-a.maxfilecount]
 
-	// remove files
-	for _, fi := range toPrune {
-		os.Remove(a.logdir + fi.Name())
+		// remove files
+		for _, fi := range toPrune {
+			os.Remove(a.logdir + fi.Name())
+		}
 	}
 
 	return nil
