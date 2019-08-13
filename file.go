@@ -161,6 +161,9 @@ func (a *Adapter) Stream(logstream chan *router.Message) {
 		// update file size
 		a.filesize = a.filesize + len(buf.Bytes())
 
+		log.Println(a.filesize)
+		log.Println(a.maxfilesize)
+
 		// rotate file if size exceed max size
 		if a.filesize > a.maxfilesize {
 			a.Rotate()
@@ -225,5 +228,8 @@ func (a *Adapter) Rotate() (err error) {
 		return err
 	}
 	a.filesize = 0
+
+	a.PruneLogs()
+
 	return nil
 }
