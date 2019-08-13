@@ -3,9 +3,12 @@ package file
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
+	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -69,6 +72,16 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 		return nil, err
 	}
 
+	// default maxfilecount 10
+	maxfilecount := 10
+	if route.Options["maxfilecount"] != "" {
+		maxcountStr := route.Options["maxfilecount"]
+		maxcount, err := strconv.Atoi(maxcountStr)
+		if err == nil {
+			maxfilecount = maxcount
+		}
+	}
+
 	// default max size (100Mb)
 	maxfilesize := 1024 * 1024 * 100
 	if route.Options["maxfilesize"] != "" {
@@ -85,6 +98,7 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 		filename:     filename,
 		logdir:       logdir,
 		maxfilesize:  maxfilesize,
+		maxfilecount: maxfilecount,
 		tmpl:         tmpl,
 		checklogfile: checkLogFileExists,
 	}
@@ -99,13 +113,14 @@ func NewFileAdapter(route *router.Route) (router.LogAdapter, error) {
 
 // Adapter is a simple adapter that streams log output to a connection without any templating
 type Adapter struct {
-	filename    string
-	logdir      string
-	filesize    int
-	maxfilesize int
-	fp          *os.File
-	route       *router.Route
-	tmpl        *template.Template
+	filename     string
+	logdir       string
+	filesize     int
+	maxfilesize  int
+	maxfilecount int
+	fp           *os.File
+	route        *router.Route
+	tmpl         *template.Template
 	checklogfile bool
 }
 
@@ -153,7 +168,37 @@ func (a *Adapter) Stream(logstream chan *router.Message) {
 	}
 }
 
-// Rotate log file
+// PruneLogs removes old log files
+func (a *Adapter) PruneLogs() (err error) {
+	// get listing of directory entries
+	entries, err := ioutil.ReadDir(a.logdir)
+	if err != nil {
+		return err
+	}
+
+	// limit to regular files that contain the appropriate file name
+	files := []os.FileInfo{}
+	for _, entry := range entries {
+		if entry.Mode().IsRegular() && strings.Contains(entry.Name(), a.filename) {
+			files = append(files, entry)
+		}
+	}
+
+	// sort files by modified date
+	sort.Slice(files, func(i, j int) bool { return files[i].ModTime().Before(files[j].ModTime()) })
+
+	// grab all but last <maxfilecount> files
+	toPrune := files[0 : len(files)-a.maxfilecount]
+
+	// remove files
+	for _, fi := range toPrune {
+		os.Remove(a.logdir + fi.Name())
+	}
+
+	return nil
+}
+
+// Rotate rotates log file
 func (a *Adapter) Rotate() (err error) {
 	// Close existing file if open
 	if a.fp != nil {
