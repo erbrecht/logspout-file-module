@@ -31,4 +31,4 @@ You can customize some features using options:
 option |  description   | default value
 ---------|----------------|--------------
 maxfilesize | max size of rotated file | 100 Mbyte
-
+maxfilecount | max number of files to retain | 10
